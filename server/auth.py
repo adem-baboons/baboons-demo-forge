@@ -13,6 +13,7 @@ from typing import Optional
 
 from fastmcp.server.auth.auth import TokenVerifier
 from mcp.server.auth.provider import AccessToken
+from pydantic import AnyHttpUrl
 
 log = logging.getLogger("forge.auth")
 
@@ -24,11 +25,23 @@ class StaticBearerVerifier(TokenVerifier):
     a timing attack cannot leak the token character-by-character.
 
     The token itself is *never* logged.
+
+    ``base_url`` should be the public URL the resource is reachable at
+    (e.g. ``https://forge.baboons.dev``). FastMCP's HTTP transport uses
+    it when emitting MCP resource metadata.
     """
 
-    def __init__(self, expected_token: str, client_id: str = "forge-client"):
+    def __init__(
+        self,
+        expected_token: str,
+        client_id: str = "forge-client",
+        base_url: AnyHttpUrl | str | None = None,
+    ):
         if not expected_token:
             raise ValueError("expected_token must be non-empty")
+        # Calls TokenVerifier.__init__ → AuthProvider.__init__, which sets
+        # self.base_url and self.resource_base_url.
+        super().__init__(base_url=base_url)
         # Keep a copy in bytes to avoid re-encoding on every check.
         self._expected = expected_token.encode("utf-8")
         self._client_id = client_id

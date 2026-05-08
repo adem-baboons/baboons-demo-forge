@@ -20,7 +20,10 @@ from .tools import register_tools
 
 def build_server(settings: Settings) -> FastMCP:
     """Construct the FastMCP server with auth, tools, and a health endpoint."""
-    verifier = StaticBearerVerifier(settings.auth_token)
+    verifier = StaticBearerVerifier(
+        settings.auth_token,
+        base_url=settings.public_url,
+    )
     mcp = FastMCP("Baboons Demo Forge", auth=verifier)
 
     register_tools(mcp, settings)

@@ -102,6 +102,7 @@ DEFAULT_DEMOS_ROOT = Path("/var/www/demos")
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8090
 DEFAULT_DOMAIN = "baboons.dev"
+DEFAULT_PUBLIC_URL = "https://forge.baboons.dev"
 LOGS_SUBDIR = ".forge/logs"
 
 
@@ -114,6 +115,7 @@ class Settings:
     host: str
     port: int
     domain: str
+    public_url: str
 
     @property
     def logs_dir(self) -> Path:
@@ -142,4 +144,5 @@ class Settings:
             host=os.getenv("FORGE_HOST", DEFAULT_HOST),
             port=int(os.getenv("FORGE_PORT", str(DEFAULT_PORT))),
             domain=os.getenv("FORGE_DOMAIN", DEFAULT_DOMAIN),
+            public_url=os.getenv("FORGE_PUBLIC_URL", DEFAULT_PUBLIC_URL),
         )

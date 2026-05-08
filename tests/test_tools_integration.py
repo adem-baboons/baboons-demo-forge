@@ -24,6 +24,7 @@ def mcp(tmp_path: Path) -> FastMCP:
         host="127.0.0.1",
         port=8090,
         domain="baboons.dev",
+        public_url="https://forge.baboons.dev",
     )
     server = FastMCP("forge-test")
     register_tools(server, settings)
