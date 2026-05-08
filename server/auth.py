@@ -29,6 +29,11 @@ class StaticBearerVerifier(TokenVerifier):
     ``base_url`` should be the public URL the resource is reachable at
     (e.g. ``https://forge.baboons.dev``). FastMCP's HTTP transport uses
     it when emitting MCP resource metadata.
+
+    ``scopes`` is the list of scopes the issued ``AccessToken`` will
+    carry. Defaults to ``["forge"]`` so the static bearer satisfies the
+    same scope that the OAuth provider declares (otherwise scoped /mcp
+    routes 403 the bearer).
     """
 
     def __init__(
@@ -36,6 +41,7 @@ class StaticBearerVerifier(TokenVerifier):
         expected_token: str,
         client_id: str = "forge-client",
         base_url: AnyHttpUrl | str | None = None,
+        scopes: list[str] | None = None,
     ):
         if not expected_token:
             raise ValueError("expected_token must be non-empty")
@@ -45,6 +51,7 @@ class StaticBearerVerifier(TokenVerifier):
         # Keep a copy in bytes to avoid re-encoding on every check.
         self._expected = expected_token.encode("utf-8")
         self._client_id = client_id
+        self._scopes = list(scopes) if scopes is not None else ["forge"]
 
     async def verify_token(self, token: str) -> Optional[AccessToken]:
         if not token:
@@ -56,6 +63,6 @@ class StaticBearerVerifier(TokenVerifier):
         return AccessToken(
             token=token,
             client_id=self._client_id,
-            scopes=[],
+            scopes=list(self._scopes),
             expires_at=None,
         )
