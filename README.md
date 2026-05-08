@@ -148,15 +148,21 @@ The Claude-driven path for Vite source: send `package.json`,
 `vite.config.ts`, `index.html`, the contents of `src/`, and any config
 files (`tailwind.config.js`, `tsconfig.json`, …) as files to
 `deploy_demo`. Forge runs `pnpm install && pnpm run build` server-side,
-publishes `dist/`. First build on a cold pnpm-store can take ~60 s; the
-store is persisted under `<demos_root>/.forge/pnpm-store` and shared
-across deploys, so subsequent builds finish in seconds.
+publishes `dist/`. pnpm caches its content-addressed store under
+`<demos_root>/.forge/pnpm-home/.local/share/pnpm/` (the unit redirects
+`$HOME` there because `ProtectHome=true` blocks the default location).
+The cache survives across deploys, so warm builds finish in seconds.
 
-Caveat: Claude.ai's MCP connector enforces a tool-call timeout (around
-60–120 s in our testing). On the **first** Vite deploy after a clean
-install, pnpm install can run longer than that — the client times out
-but the server keeps working. If `deploy_demo` appears to fail, wait
-30 s and call `list_demos` to see whether it landed.
+Measured on the production VPS (Vite + React + Tailwind, 8-file
+project): cold deploy ~10 s, warm deploy ~5 s, end-to-end including
+upload, MCP handshake, pnpm install, vite build, atomic swap, Caddy
+reload.
+
+Caveat: pnpm install can run long on heavier dep trees, and Claude.ai's
+MCP connector enforces a tool-call timeout (~60–120 s in our testing).
+If you hit a timeout on a fat dep tree, wait 30 s and call `list_demos`
+to see whether the deploy landed before declaring failure — the server
+keeps working even after the client gives up.
 
 ### Usage
 

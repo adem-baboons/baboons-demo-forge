@@ -31,7 +31,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-TEXT_EXTS = {".html", ".css", ".js", ".json", ".svg", ".txt"}
+TEXT_EXTS = {".html", ".css", ".js", ".jsx", ".ts", ".tsx", ".json", ".svg", ".txt"}
 FORGE_URL = "https://forge.baboons.dev/mcp"
 PROTOCOL_VERSION = "2025-06-18"
 
