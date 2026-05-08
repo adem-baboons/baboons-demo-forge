@@ -59,6 +59,11 @@ FORGE_DEMOS_ROOT=${DEMOS_ROOT}
 FORGE_HOST=127.0.0.1
 FORGE_PORT=8090
 FORGE_DOMAIN=baboons.dev
+FORGE_PUBLIC_URL=https://forge.baboons.dev
+# FastMCP otherwise tries to write a version cache under \$HOME on startup,
+# which collides with the unit's ProtectHome=true. The unit file also sets
+# this — keeping it here too means env-file edits stay self-contained.
+FASTMCP_CHECK_FOR_UPDATES=off
 EOF
   chown root:"${DEPLOY_USER}" "${ENV_FILE}"
   chmod 640 "${ENV_FILE}"
