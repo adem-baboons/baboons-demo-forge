@@ -116,6 +116,48 @@ file documents this alongside the directive.
 - `oauth-state.json` contains access tokens and refresh tokens in
   cleartext. Threat model assumes the VPS file system is trusted.
 
+## Heavy demos: when LLM-driven `deploy_demo` doesn't fit
+
+`deploy_demo` accepts files inline (text or base64-encoded binary) in the
+JSON-RPC payload. When the demo is small — a hand-written `index.html` plus
+maybe a stylesheet — Claude can construct that payload directly. But built
+SPAs (Vite + React, Next export, etc.) often produce a `dist/` directory
+that's hundreds of kilobytes once base64-encoded, which blows past Claude's
+output token budget mid-payload.
+
+For those, use **`scripts/upload-static-dir.py`** — an operator-side script
+that walks a built directory, classifies files (text vs binary by
+extension), and POSTs the whole payload directly to `forge.baboons.dev/mcp`.
+
+| Use case | Pick |
+|---|---|
+| Small static demo, hand-written HTML, ≲100 KB total | Claude-driven `deploy_demo` (any chat) |
+| Built static directory with binary assets, anything that exceeds the LLM's output budget | `scripts/upload-static-dir.py` |
+
+### Usage
+
+```bash
+# Pull the ops bearer from the VPS env file (one-time)
+export FORGE_AUTH_TOKEN=$(ssh -i ~/.ssh/id_ed25519 root@134.209.207.63 \
+  'sudo grep FORGE_AUTH_TOKEN /etc/baboons-demo-forge/forge.env | cut -d= -f2')
+
+# Build your demo locally
+cd ~/path/to/demo && pnpm build   # produces ./dist or ./out
+
+# Upload
+python3 scripts/upload-static-dir.py \
+  --dist-dir ./dist \
+  --slug acme-pitch
+```
+
+The script does the proper MCP three-step handshake (`initialize` →
+`notifications/initialized` → `tools/call`, carrying the `Mcp-Session-Id`
+header through). The earlier shortcut of POSTing `tools/call` directly fails
+with `400 Missing session ID` — the handshake is non-optional.
+
+Authenticates using the static `FORGE_AUTH_TOKEN` (the ops side door); does
+not go through OAuth. Uses Python stdlib only — no `pip install` needed.
+
 ## Local dev
 
 ```bash
