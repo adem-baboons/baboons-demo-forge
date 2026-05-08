@@ -36,7 +36,11 @@ SyslogIdentifier=baboons-demo-forge
 # allow keeping NoNewPrivileges=true. Rejected for setup complexity.
 PrivateTmp=true
 ProtectSystem=strict
-ReadWritePaths=/var/www/demos /etc/caddy/sites.d
+# `-` prefix on /etc/caddy/sites.d makes the path optional: systemd skips it
+# if the directory does not exist (e.g. on first boot before the migration
+# script has run, or if Caddy is uninstalled). Without this prefix the
+# service fails 226/NAMESPACE on a clean host.
+ReadWritePaths=/var/www/demos -/etc/caddy/sites.d
 ProtectHome=true
 ProtectKernelTunables=true
 ProtectKernelModules=true
