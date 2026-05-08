@@ -81,10 +81,13 @@ import pathlib, re, sys
 p = pathlib.Path(sys.argv[1])
 src = p.read_text()
 
-# Drop top-level blocks for "<slug>.demos.baboons.dev" (and any whitespace
-# between them and the next block).
+# Drop top-level blocks for "<slug>.demos.baboons.dev". The block body may
+# contain Caddy placeholders like {path} which embed a single level of
+# nested braces — naive [^}]* stops at the first inner `}`. The pattern
+# below allows one level of nesting, which covers all known Caddyfile
+# placeholders ({path}, {labels.2}, {http.error.status_code}, etc.).
 new = re.sub(
-    r"^[a-z0-9][a-z0-9-]*\.demos\.baboons\.dev \{[^}]*\}\s*\n",
+    r"^[a-z0-9][a-z0-9-]*\.demos\.baboons\.dev \{(?:[^{}]|\{[^{}]*\})*\}\s*\n",
     "",
     src,
     flags=re.MULTILINE,
