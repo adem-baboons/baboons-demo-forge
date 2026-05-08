@@ -108,8 +108,12 @@ LOGS_SUBDIR = ".forge/logs"
 # Caddy integration: each successful deploy writes a per-slug snippet at
 # ``<sites_dir>/<slug>.baboons.dev.conf`` and triggers ``reload_cmd``. A
 # flock at ``lock_path`` serialises concurrent mutations.
+#
+# The default lock path lives under demos_root rather than /var/lock so it
+# is reachable under the systemd unit's ProtectSystem=strict — without
+# needing to whitelist /var/lock in ReadWritePaths.
 DEFAULT_CADDY_SITES_DIR = Path("/etc/caddy/sites.d")
-DEFAULT_CADDY_LOCK_PATH = Path("/var/lock/forge-caddy.lock")
+DEFAULT_CADDY_LOCK_FILENAME = "forge-caddy.lock"
 DEFAULT_CADDY_RELOAD_CMD = "sudo -n /usr/bin/systemctl reload caddy"
 
 
@@ -163,7 +167,14 @@ class Settings:
                 os.getenv("FORGE_CADDY_SITES_DIR", str(DEFAULT_CADDY_SITES_DIR))
             ),
             caddy_lock_path=Path(
-                os.getenv("FORGE_CADDY_LOCK_PATH", str(DEFAULT_CADDY_LOCK_PATH))
+                os.getenv(
+                    "FORGE_CADDY_LOCK_PATH",
+                    str(
+                        Path(os.getenv("FORGE_DEMOS_ROOT", str(DEFAULT_DEMOS_ROOT)))
+                        / ".forge"
+                        / DEFAULT_CADDY_LOCK_FILENAME
+                    ),
+                )
             ),
             caddy_reload_cmd=os.getenv("FORGE_CADDY_RELOAD_CMD", DEFAULT_CADDY_RELOAD_CMD),
         )

@@ -55,9 +55,18 @@ Caddyfile contains a single `import /etc/caddy/sites.d/*.conf` directive.
 - The MCP server listens on `127.0.0.1:8090`. TLS termination + public ingress
   is handled by Caddy at `https://forge.baboons.dev/mcp`.
 - Service runs as the `baboons-deploy` user with a hardened systemd unit
-  (`ProtectSystem=strict`, `ReadWritePaths=/var/www/demos`, no privilege escalation).
+  (`ProtectSystem=strict`, `ReadWritePaths=/var/www/demos /etc/caddy/sites.d`,
+  `ProtectHome=true`, `PrivateTmp=true`, `RestrictSUIDSGID=true`, …).
 - Deploys cannot escape `/var/www/demos/<slug>/`. Absolute paths and
   traversal segments are rejected before any file is written.
+- **Privilege-escalation tradeoff:** `NoNewPrivileges=true` is intentionally
+  NOT set so the service can run `sudo systemctl reload caddy` after writing
+  a snippet. The blast radius of that allowance is bounded by
+  `/etc/sudoers.d/baboons-demo-forge-caddy`, which permits exactly one
+  command — `/usr/bin/systemctl reload caddy` — and nothing else. A polkit
+  rule allowing reload via dbus would let us keep `NoNewPrivileges=true`,
+  but was rejected for setup complexity. The unit file documents this
+  alongside the directive.
 
 ## Local dev
 

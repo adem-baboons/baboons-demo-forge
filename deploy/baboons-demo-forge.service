@@ -20,12 +20,23 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=baboons-demo-forge
 
-# Hardening — the service writes to /var/www/demos and reads /etc/baboons-demo-forge,
-# nothing else.
-NoNewPrivileges=true
+# Hardening — the service writes to /var/www/demos and /etc/caddy/sites.d
+# (per-slug Caddy snippets) and reads /etc/baboons-demo-forge.
+#
+# NoNewPrivileges=true is intentionally NOT set: the service relies on
+# `sudo systemctl reload caddy` to apply demo snippets, and NoNewPrivileges
+# blocks all sudo elevation regardless of sudoers permissions.
+#
+# The accepted blast radius is bounded by /etc/sudoers.d/baboons-demo-forge-caddy,
+# which permits exactly one command: `/usr/bin/systemctl reload caddy`.
+# The remaining hardening (ProtectSystem=strict, ReadWritePaths, ProtectHome,
+# PrivateTmp, RestrictSUIDSGID, etc.) constrains everything else.
+#
+# Considered alternative: polkit rule granting reload via dbus, which would
+# allow keeping NoNewPrivileges=true. Rejected for setup complexity.
 PrivateTmp=true
 ProtectSystem=strict
-ReadWritePaths=/var/www/demos
+ReadWritePaths=/var/www/demos /etc/caddy/sites.d
 ProtectHome=true
 ProtectKernelTunables=true
 ProtectKernelModules=true
