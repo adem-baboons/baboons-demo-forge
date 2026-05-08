@@ -32,6 +32,8 @@ def mcp(tmp_path: Path) -> FastMCP:
         caddy_sites_dir=tmp_path / "sites.d",
         caddy_lock_path=tmp_path / "forge-caddy.lock",
         caddy_reload_cmd="true",
+        dcr_enabled=True,
+        oauth_state_path=tmp_path / "oauth-state.json",
     )
     server = FastMCP("forge-test")
     register_tools(server, settings)
@@ -174,6 +176,8 @@ def _mcp_with_caddy(tmp_path: Path, reload_cmd: str) -> FastMCP:
         caddy_sites_dir=tmp_path / "sites.d",
         caddy_lock_path=tmp_path / "forge-caddy.lock",
         caddy_reload_cmd=reload_cmd,
+        dcr_enabled=True,
+        oauth_state_path=tmp_path / "oauth-state.json",
     )
     server = FastMCP("forge-caddy-test")
     register_tools(server, settings)

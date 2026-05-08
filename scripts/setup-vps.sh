@@ -60,6 +60,10 @@ FORGE_HOST=127.0.0.1
 FORGE_PORT=8090
 FORGE_DOMAIN=baboons.dev
 FORGE_PUBLIC_URL=https://forge.baboons.dev
+# DCR is open at first boot so Claude.ai can self-register via /register.
+# Flip to 0 (and \`systemctl restart baboons-demo-forge\`) immediately after the
+# first registration succeeds. See README's "DCR is gated" section.
+FORGE_DCR_ENABLED=1
 # FastMCP otherwise tries to write a version cache under \$HOME on startup,
 # which collides with the unit's ProtectHome=true. The unit file also sets
 # this — keeping it here too means env-file edits stay self-contained.

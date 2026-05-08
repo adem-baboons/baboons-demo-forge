@@ -49,24 +49,72 @@ Caddyfile contains a single `import /etc/caddy/sites.d/*.conf` directive.
 
 ## Security model
 
-- Single shared bearer token, stored only in `/etc/baboons-demo-forge/forge.env`
-  (mode `640`, `root:baboons-deploy`). The token is never logged or echoed back.
-- Token comparison is constant-time (`hmac.compare_digest`).
-- The MCP server listens on `127.0.0.1:8090`. TLS termination + public ingress
-  is handled by Caddy at `https://forge.baboons.dev/mcp`.
-- Service runs as the `baboons-deploy` user with a hardened systemd unit
-  (`ProtectSystem=strict`, `ReadWritePaths=/var/www/demos /etc/caddy/sites.d`,
-  `ProtectHome=true`, `PrivateTmp=true`, `RestrictSUIDSGID=true`, …).
+### Authentication
+
+The server accepts two parallel auth paths via `MultiAuth`:
+
+1. **OAuth 2.1 Authorization Server (Claude.ai's path).** Forge acts as both
+   resource server and authorization server. Endpoints mounted automatically
+   by FastMCP: `/.well-known/oauth-authorization-server`,
+   `/.well-known/oauth-protected-resource/mcp`, `/register`, `/authorize`,
+   `/token`, `/revoke`. State (clients, codes, access tokens, refresh tokens)
+   is persisted to `<demos_root>/.forge/oauth-state.json` (mode `0600`) so
+   restarts don't invalidate Claude's session.
+
+2. **Static bearer side-door (ops only).** `FORGE_AUTH_TOKEN` from
+   `/etc/baboons-demo-forge/forge.env` (mode `640`, `root:baboons-deploy`).
+   Used by curl-based smoke tests and any offline ops scripting; not
+   advertised in OAuth metadata. Constant-time comparison, never logged.
+
+### DCR is gated by `FORGE_DCR_ENABLED`
+
+Without gating, anyone reaching `https://forge.baboons.dev/register` could
+register an OAuth client, complete the flow, and call `deploy_demo` — i.e.
+arbitrary file upload + build execution on the VPS (the standard "free
+build server" abuse pattern).
+
+`FORGE_DCR_ENABLED=1` opens `/register`; `FORGE_DCR_ENABLED=0` returns a
+structured RFC 7591 error pointing the caller at the env file. Workflow:
+
+1. First-time setup: `FORGE_DCR_ENABLED=1`, restart service, add the MCP
+   server in Claude (it auto-registers via DCR).
+2. Once `forge.oauth: registered client …` appears in `journalctl`, edit
+   `/etc/baboons-demo-forge/forge.env` to `FORGE_DCR_ENABLED=0` and
+   `systemctl restart baboons-demo-forge`. The persisted client survives
+   the restart; `/register` is now closed.
+3. To register a second client (new device, etc.): flip back to `1`,
+   restart, register, flip back to `0`, restart.
+
+### Networking + system hardening
+
+- The MCP server listens on `127.0.0.1:8090`. TLS termination + public
+  ingress is handled by Caddy at `https://forge.baboons.dev/`.
+- Service runs as `baboons-deploy` with a hardened systemd unit:
+  `ProtectSystem=strict`, `ReadWritePaths=/var/www/demos -/etc/caddy/sites.d`,
+  `ProtectHome=true`, `PrivateTmp=true`, `RestrictSUIDSGID=true`, …
 - Deploys cannot escape `/var/www/demos/<slug>/`. Absolute paths and
   traversal segments are rejected before any file is written.
-- **Privilege-escalation tradeoff:** `NoNewPrivileges=true` is intentionally
-  NOT set so the service can run `sudo systemctl reload caddy` after writing
-  a snippet. The blast radius of that allowance is bounded by
-  `/etc/sudoers.d/baboons-demo-forge-caddy`, which permits exactly one
-  command — `/usr/bin/systemctl reload caddy` — and nothing else. A polkit
-  rule allowing reload via dbus would let us keep `NoNewPrivileges=true`,
-  but was rejected for setup complexity. The unit file documents this
-  alongside the directive.
+
+### Privilege-escalation tradeoff
+
+`NoNewPrivileges=true` is intentionally NOT set so the service can run
+`sudo systemctl reload caddy` after writing a snippet. The blast radius of
+that allowance is bounded by `/etc/sudoers.d/baboons-demo-forge-caddy`,
+which permits exactly one command — `/usr/bin/systemctl reload caddy` — and
+nothing else. A polkit rule allowing reload via dbus would let us keep
+`NoNewPrivileges=true`, but was rejected for setup complexity. The unit
+file documents this alongside the directive.
+
+### Soft spots worth knowing
+
+- `/authorize` has no human-consent UI; whoever hits it with a registered
+  `client_id` mints an auth code immediately. The real gate is DCR (above)
+  + the `client_secret` issued at registration time. If an attacker
+  obtains a registered `client_id`+`client_secret` (e.g. via
+  `oauth-state.json` exfiltration), they can issue tokens. File mode 0600
+  keeps that to root + `baboons-deploy`.
+- `oauth-state.json` contains access tokens and refresh tokens in
+  cleartext. Threat model assumes the VPS file system is trusted.
 
 ## Local dev
 
@@ -106,10 +154,26 @@ FORGE_DEMOS_ROOT=/tmp/forge-dev-demos \
 
 ## Connecting Claude
 
-In Claude (web/mobile/desktop), add an MCP server:
+In Claude (web/mobile/desktop), add a custom integration:
 
 - URL: `https://forge.baboons.dev/mcp`
-- Transport: Streamable HTTP
-- Auth: Bearer `<FORGE_AUTH_TOKEN>`
+- Leave the "OAuth Client ID" and "Client Secret" fields blank — Forge
+  supports Dynamic Client Registration; Claude will create its own client.
 
-Then call `deploy_demo` from any chat.
+Operator workflow:
+
+1. On the VPS, confirm `FORGE_DCR_ENABLED=1` in
+   `/etc/baboons-demo-forge/forge.env` and the service is up.
+2. Click *Add* in the Claude integrations dialog.
+3. A browser tab opens to `https://forge.baboons.dev/authorize?…` and
+   redirects back with an auth code. Token exchange happens automatically.
+4. Watch `journalctl -u baboons-demo-forge -f` for
+   `forge.oauth: registered client <id>`.
+5. Set `FORGE_DCR_ENABLED=0` and `systemctl restart baboons-demo-forge`
+   to close the registration door.
+
+After this, `deploy_demo`, `list_demos`, `delete_demo`, `get_build_logs`
+appear as available tools in any Claude chat.
+
+For curl-based ops or smoke tests, the static `FORGE_AUTH_TOKEN` still
+works as an `Authorization: Bearer` header, parallel to OAuth.

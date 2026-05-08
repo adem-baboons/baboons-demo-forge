@@ -116,6 +116,10 @@ DEFAULT_CADDY_SITES_DIR = Path("/etc/caddy/sites.d")
 DEFAULT_CADDY_LOCK_FILENAME = "forge-caddy.lock"
 DEFAULT_CADDY_RELOAD_CMD = "sudo -n /usr/bin/systemctl reload caddy"
 
+# OAuth state lives under ``demos_root/.forge/`` (already inside the
+# systemd unit's ReadWritePaths). The file is written with mode 0600.
+DEFAULT_OAUTH_STATE_FILENAME = "oauth-state.json"
+
 
 @dataclass(frozen=True)
 class Settings:
@@ -133,6 +137,10 @@ class Settings:
     caddy_sites_dir: Path
     caddy_lock_path: Path
     caddy_reload_cmd: str
+
+    # OAuth integration
+    dcr_enabled: bool
+    oauth_state_path: Path
 
     @property
     def logs_dir(self) -> Path:
@@ -177,4 +185,15 @@ class Settings:
                 )
             ),
             caddy_reload_cmd=os.getenv("FORGE_CADDY_RELOAD_CMD", DEFAULT_CADDY_RELOAD_CMD),
+            dcr_enabled=os.getenv("FORGE_DCR_ENABLED", "1") == "1",
+            oauth_state_path=Path(
+                os.getenv(
+                    "FORGE_OAUTH_STATE_PATH",
+                    str(
+                        Path(os.getenv("FORGE_DEMOS_ROOT", str(DEFAULT_DEMOS_ROOT)))
+                        / ".forge"
+                        / DEFAULT_OAUTH_STATE_FILENAME
+                    ),
+                )
+            ),
         )

@@ -24,6 +24,8 @@ def _settings(tmp_path) -> Settings:
         caddy_sites_dir=tmp_path / "sites.d",
         caddy_lock_path=tmp_path / "forge-caddy.lock",
         caddy_reload_cmd="true",
+        dcr_enabled=True,
+        oauth_state_path=tmp_path / "oauth-state.json",
     )
 
 
