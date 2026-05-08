@@ -163,6 +163,33 @@ def test_get_build_logs_for_unknown_slug(mcp: FastMCP) -> None:
     assert "deployed" in res["error"].lower()
 
 
+def test_list_demos_skips_dot_and_underscore_prefixed_dirs(
+    mcp: FastMCP, tmp_path: Path
+) -> None:
+    """list_demos must hide infrastructure (`.forge`) and build leftovers
+    (`_assets`) — neither can be a valid slug and neither corresponds to a
+    reachable subdomain (DNS RFC 952 disallows underscores in labels).
+    """
+    # Real deploy via the tool path — produces a valid slug "acme".
+    _call(
+        mcp,
+        "deploy_demo",
+        slug="acme",
+        files=[{"path": "index.html", "content": "x"}],
+    )
+    # Hand-craft the kind of detritus we observed on the live VPS:
+    (tmp_path / "_assets").mkdir()
+    (tmp_path / "_assets" / "logo.png").write_bytes(b"binary")
+    (tmp_path / ".forge").mkdir(exist_ok=True)  # logs dir already exists
+    (tmp_path / ".hidden").mkdir()
+
+    listed = _call(mcp, "list_demos").structured_content
+    slugs = {d["slug"] for d in listed["demos"]}
+    assert slugs == {"acme"}, (
+        f"list_demos must filter both '.'- and '_'-prefixed dirs; got {slugs}"
+    )
+
+
 def _mcp_with_caddy(tmp_path: Path, reload_cmd: str) -> FastMCP:
     """Build a FastMCP instance that has Caddy orchestration enabled."""
     settings = Settings(

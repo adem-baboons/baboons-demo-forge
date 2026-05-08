@@ -201,8 +201,13 @@ def _list_demo_slugs(settings: Settings) -> list[str]:
     for child in sorted(settings.demos_root.iterdir()):
         if not child.is_dir():
             continue
-        # Skip hidden / metadata dirs (e.g. ".forge").
-        if child.name.startswith("."):
+        # Skip dirs that aren't valid demo slugs:
+        #   - "."-prefixed: hidden / metadata dirs (e.g. ".forge")
+        #   - "_"-prefixed: leftover build inputs (e.g. "_assets") — these
+        #     can never have been created by deploy_demo (validate_slug
+        #     rejects underscores) and aren't reachable as subdomains
+        #     (RFC 952/3986 disallows underscores in DNS labels).
+        if child.name.startswith((".", "_")):
             continue
         out.append(child.name)
     return out
