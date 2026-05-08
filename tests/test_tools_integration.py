@@ -25,6 +25,13 @@ def mcp(tmp_path: Path) -> FastMCP:
         port=8090,
         domain="baboons.dev",
         public_url="https://forge.baboons.dev",
+        # Caddy is exercised by tests/test_caddy.py with stub commands; keep
+        # it disabled here so the existing tool-call coverage doesn't shell
+        # out to sudo / systemctl.
+        caddy_enabled=False,
+        caddy_sites_dir=tmp_path / "sites.d",
+        caddy_lock_path=tmp_path / "forge-caddy.lock",
+        caddy_reload_cmd="true",
     )
     server = FastMCP("forge-test")
     register_tools(server, settings)
@@ -152,6 +159,69 @@ def test_get_build_logs_for_unknown_slug(mcp: FastMCP) -> None:
     res = _call(mcp, "get_build_logs", slug="nope").structured_content
     assert res["ok"] is False
     assert "deployed" in res["error"].lower()
+
+
+def _mcp_with_caddy(tmp_path: Path, reload_cmd: str) -> FastMCP:
+    """Build a FastMCP instance that has Caddy orchestration enabled."""
+    settings = Settings(
+        auth_token="x" * 64,
+        demos_root=tmp_path / "demos",
+        host="127.0.0.1",
+        port=8090,
+        domain="baboons.dev",
+        public_url="https://forge.baboons.dev",
+        caddy_enabled=True,
+        caddy_sites_dir=tmp_path / "sites.d",
+        caddy_lock_path=tmp_path / "forge-caddy.lock",
+        caddy_reload_cmd=reload_cmd,
+    )
+    server = FastMCP("forge-caddy-test")
+    register_tools(server, settings)
+    return server
+
+
+def test_deploy_writes_caddy_snippet_then_delete_removes_it(tmp_path: Path) -> None:
+    server = _mcp_with_caddy(tmp_path, reload_cmd="true")
+    sites = tmp_path / "sites.d"
+
+    res = asyncio.run(
+        server.call_tool(
+            "deploy_demo",
+            {"slug": "acme", "files": [{"path": "index.html", "content": "<h1>hi</h1>"}]},
+        )
+    ).structured_content
+    assert res["ok"] is True
+    snippet = sites / "acme.baboons.dev.conf"
+    assert snippet.exists()
+    body = snippet.read_text()
+    assert "acme.baboons.dev" in body
+    assert "root * " in body and "/demos/acme" in body
+
+    res2 = asyncio.run(
+        server.call_tool("delete_demo", {"slug": "acme", "confirm": True})
+    ).structured_content
+    assert res2["ok"] is True
+    assert not snippet.exists()
+
+
+def test_deploy_surfaces_caddy_reload_failure_and_rolls_back(tmp_path: Path) -> None:
+    """If reload fails on a brand-new slug, the snippet must not survive."""
+    server = _mcp_with_caddy(
+        tmp_path, reload_cmd="bash -c 'echo simulated-failure; exit 1'"
+    )
+    res = asyncio.run(
+        server.call_tool(
+            "deploy_demo",
+            {"slug": "broken", "files": [{"path": "index.html", "content": "x"}]},
+        )
+    ).structured_content
+    assert res["ok"] is False
+    assert "Caddy reload failed" in res["error"]
+    assert "simulated-failure" in res["caddy_output"]
+    # Snippet rolled back — must not be present.
+    assert not (tmp_path / "sites.d" / "broken.baboons.dev.conf").exists()
+    # But the files were written — the user can retry deploy_demo to recover.
+    assert (tmp_path / "demos" / "broken" / "index.html").exists()
 
 
 def test_redeploy_overwrites_previous(mcp: FastMCP, tmp_path: Path) -> None:

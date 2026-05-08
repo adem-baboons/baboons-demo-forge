@@ -23,10 +23,15 @@ Two build modes, auto-detected from the payload:
 
 ## URL pattern
 
-Every demo lives at the apex level: `https://<slug>.baboons.dev`. The wildcard
-`*.baboons.dev` is served by Caddy with a Cloudflare DNS-01 cert. More-specific
-sites (`forge.baboons.dev`, `sales.baboons.dev`, `stax.baboons.dev`, …) win
-over the wildcard.
+Every demo lives at the apex level: `https://<slug>.baboons.dev`. Routing is
+per-slug: each successful `deploy_demo` writes a Caddy site block to
+`/etc/caddy/sites.d/<slug>.baboons.dev.conf` and reloads Caddy. The top-level
+Caddyfile contains a single `import /etc/caddy/sites.d/*.conf` directive.
+
+> **Failure mode:** if a Caddy reload fails (e.g. another snippet is malformed),
+> the failing snippet is rolled back, but the demo files at
+> `/var/www/demos/<slug>/` stay in place so the deploy can be retried. Orphaned
+> demo files require manual cleanup if no retry follows.
 
 ## Slug rules
 

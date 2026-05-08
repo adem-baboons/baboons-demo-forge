@@ -18,6 +18,7 @@ from typing import Annotated, Any, Literal
 from fastmcp import FastMCP
 from pydantic import BaseModel, Field
 
+from . import caddy as caddy_mod
 from .builder import BuildError, build
 from .config import (
     LOGS_SUBDIR,
@@ -257,6 +258,27 @@ def register_tools(mcp: FastMCP, settings: Settings) -> None:
                     "error": f"failed to publish: {exc}",
                 }
 
+            if settings.caddy_enabled:
+                try:
+                    with caddy_mod.caddy_lock(settings.caddy_lock_path):
+                        caddy_mod.install_snippet(
+                            slug,
+                            settings.caddy_sites_dir,
+                            settings.demos_root,
+                            settings.caddy_reload_cmd,
+                        )
+                except caddy_mod.CaddyError as exc:
+                    log.error("forge.deploy: caddy reload failed for %s: %s", slug, exc)
+                    return {
+                        "ok": False,
+                        "slug": slug,
+                        "error": (
+                            f"published files to {target}, but Caddy reload failed: {exc}. "
+                            "The snippet was rolled back; the route is unchanged."
+                        ),
+                        "caddy_output": (exc.output or "")[-2000:],
+                    }
+
             log_path = _save_build_log(settings, slug, result.logs)
             log.info("forge.deploy: published %s (mode=%s)", slug, result.mode)
             return {
@@ -325,6 +347,27 @@ def register_tools(mcp: FastMCP, settings: Settings) -> None:
             return {"ok": False, "slug": slug, "error": "target is not a directory"}
 
         shutil.rmtree(target)
+
+        if settings.caddy_enabled:
+            try:
+                with caddy_mod.caddy_lock(settings.caddy_lock_path):
+                    caddy_mod.remove_snippet(
+                        slug,
+                        settings.caddy_sites_dir,
+                        settings.caddy_reload_cmd,
+                    )
+            except caddy_mod.CaddyError as exc:
+                log.error("forge.delete: caddy reload failed for %s: %s", slug, exc)
+                return {
+                    "ok": False,
+                    "slug": slug,
+                    "error": (
+                        f"removed files at {target}, but Caddy reload failed: {exc}. "
+                        "The snippet was restored; the route is unchanged."
+                    ),
+                    "caddy_output": (exc.output or "")[-2000:],
+                }
+
         log_path = settings.logs_dir / f"{slug}.log"
         if log_path.exists():
             log_path.unlink()

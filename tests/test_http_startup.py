@@ -20,6 +20,10 @@ def _settings(tmp_path) -> Settings:
         port=8090,
         domain="baboons.dev",
         public_url="https://forge.baboons.dev",
+        caddy_enabled=False,
+        caddy_sites_dir=tmp_path / "sites.d",
+        caddy_lock_path=tmp_path / "forge-caddy.lock",
+        caddy_reload_cmd="true",
     )
 
 

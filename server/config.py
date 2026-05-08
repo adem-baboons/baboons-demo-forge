@@ -105,6 +105,13 @@ DEFAULT_DOMAIN = "baboons.dev"
 DEFAULT_PUBLIC_URL = "https://forge.baboons.dev"
 LOGS_SUBDIR = ".forge/logs"
 
+# Caddy integration: each successful deploy writes a per-slug snippet at
+# ``<sites_dir>/<slug>.baboons.dev.conf`` and triggers ``reload_cmd``. A
+# flock at ``lock_path`` serialises concurrent mutations.
+DEFAULT_CADDY_SITES_DIR = Path("/etc/caddy/sites.d")
+DEFAULT_CADDY_LOCK_PATH = Path("/var/lock/forge-caddy.lock")
+DEFAULT_CADDY_RELOAD_CMD = "sudo -n /usr/bin/systemctl reload caddy"
+
 
 @dataclass(frozen=True)
 class Settings:
@@ -116,6 +123,12 @@ class Settings:
     port: int
     domain: str
     public_url: str
+
+    # Caddy integration
+    caddy_enabled: bool
+    caddy_sites_dir: Path
+    caddy_lock_path: Path
+    caddy_reload_cmd: str
 
     @property
     def logs_dir(self) -> Path:
@@ -145,4 +158,12 @@ class Settings:
             port=int(os.getenv("FORGE_PORT", str(DEFAULT_PORT))),
             domain=os.getenv("FORGE_DOMAIN", DEFAULT_DOMAIN),
             public_url=os.getenv("FORGE_PUBLIC_URL", DEFAULT_PUBLIC_URL),
+            caddy_enabled=os.getenv("FORGE_CADDY_ENABLED", "1") == "1",
+            caddy_sites_dir=Path(
+                os.getenv("FORGE_CADDY_SITES_DIR", str(DEFAULT_CADDY_SITES_DIR))
+            ),
+            caddy_lock_path=Path(
+                os.getenv("FORGE_CADDY_LOCK_PATH", str(DEFAULT_CADDY_LOCK_PATH))
+            ),
+            caddy_reload_cmd=os.getenv("FORGE_CADDY_RELOAD_CMD", DEFAULT_CADDY_RELOAD_CMD),
         )

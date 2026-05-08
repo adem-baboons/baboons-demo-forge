@@ -13,6 +13,7 @@ from fastmcp import FastMCP
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 
+from . import caddy as caddy_mod
 from .auth import StaticBearerVerifier
 from .config import Settings
 from .tools import register_tools
@@ -50,6 +51,12 @@ def main() -> None:
         settings.port,
         settings.demos_root,
     )
+    if settings.caddy_enabled:
+        ok, msg = caddy_mod.check_reload_permission(settings.caddy_reload_cmd)
+        if ok:
+            log.info("forge.caddy preflight: %s", msg)
+        else:
+            log.warning("forge.caddy preflight WARNING: %s", msg)
     mcp = build_server(settings)
     # Streamable HTTP transport — works with Claude clients that consume
     # remote MCP servers via /mcp.
