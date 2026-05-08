@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Local env (never commit secrets)
+.env
+.env.*
+!.env.example
+
+# Test artefacts
+.coverage
+htmlcov/

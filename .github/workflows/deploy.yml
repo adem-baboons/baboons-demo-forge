@@ -1,0 +1,58 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest
+      - name: Run tests
+        run: pytest
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: baboons-deploy
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd /opt/baboons-demo-forge
+            echo "=== fetching ==="
+            git fetch origin main
+            git reset --hard origin/main
+            echo "=== syncing python deps ==="
+            .venv/bin/pip install --quiet -r requirements.txt
+            echo "=== smoke test: import server.main ==="
+            FORGE_AUTH_TOKEN=dummy-32-char-placeholder-aaaaaaaaaaaa \
+              .venv/bin/python -c "from server import main; print('import ok')"
+            echo "=== restarting service ==="
+            sudo -n /usr/bin/systemctl restart baboons-demo-forge
+            sleep 3
+            systemctl is-active baboons-demo-forge
+            echo "=== post-deploy health check ==="
+            curl -sf -o /dev/null -w "localhost:8090/health %{http_code}\n" \
+              http://127.0.0.1:8090/health
+            echo "=== deploy ok: $(git rev-parse --short HEAD) ==="
