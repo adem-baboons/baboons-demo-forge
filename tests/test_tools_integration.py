@@ -224,6 +224,38 @@ def test_deploy_surfaces_caddy_reload_failure_and_rolls_back(tmp_path: Path) -> 
     assert (tmp_path / "demos" / "broken" / "index.html").exists()
 
 
+def test_published_demo_is_world_readable(mcp: FastMCP, tmp_path: Path) -> None:
+    """The published directory must be traversable by Caddy (a different user).
+
+    tempfile.TemporaryDirectory creates 0700 dirs by default; without an
+    explicit chmod, Caddy returns 403 trying to serve files inside.
+    """
+    import stat
+
+    _call(
+        mcp,
+        "deploy_demo",
+        slug="permcheck",
+        files=[
+            {"path": "index.html", "content": "<h1>perm</h1>"},
+            {"path": "assets/x.css", "content": "body{}"},
+        ],
+    )
+    target = tmp_path / "permcheck"
+    assert target.exists()
+    # Directory must be at minimum 0755 (rwxr-xr-x).
+    mode = stat.S_IMODE(target.stat().st_mode)
+    assert mode & 0o755 == 0o755, f"demo dir mode {oct(mode)} lacks world traverse"
+    # Nested directory too.
+    nested = target / "assets"
+    nmode = stat.S_IMODE(nested.stat().st_mode)
+    assert nmode & 0o755 == 0o755, f"nested dir mode {oct(nmode)} lacks world traverse"
+    # Files must be at minimum 0644 (rw-r--r--).
+    for f in [target / "index.html", target / "assets" / "x.css"]:
+        fmode = stat.S_IMODE(f.stat().st_mode)
+        assert fmode & 0o644 == 0o644, f"{f} mode {oct(fmode)} lacks world read"
+
+
 def test_redeploy_overwrites_previous(mcp: FastMCP, tmp_path: Path) -> None:
     _call(
         mcp,

@@ -169,6 +169,22 @@ def _atomic_replace_dir(src: Path, dst: Path) -> None:
         raise
     if backup is not None:
         shutil.rmtree(backup, ignore_errors=True)
+    _make_world_readable(dst)
+
+
+def _make_world_readable(root: Path) -> None:
+    """Set perms across ``root`` so Caddy (a different user) can serve it.
+
+    Without this, dirs created via ``tempfile.TemporaryDirectory`` arrive
+    with mode 0700; Caddy lacks traverse permission and returns 403. We
+    set 0755 on every directory and 0644 on every file under root.
+    """
+    os.chmod(root, 0o755)
+    for cur, dirs, files in os.walk(root):
+        for d in dirs:
+            os.chmod(os.path.join(cur, d), 0o755)
+        for f in files:
+            os.chmod(os.path.join(cur, f), 0o644)
 
 
 def _save_build_log(settings: Settings, slug: str, log_text: str) -> Path:
