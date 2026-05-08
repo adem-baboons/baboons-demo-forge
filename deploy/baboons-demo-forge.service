@@ -13,6 +13,16 @@ EnvironmentFile=/etc/baboons-demo-forge/forge.env
 # which collides with ProtectHome=true. Disable the check at the unit level
 # so this stays correct after a fresh install.
 Environment=FASTMCP_CHECK_FOR_UPDATES=off
+# pnpm's default store location is $HOME/.pnpm-store, blocked by
+# ProtectHome=true. Redirect to a path inside the demos tree (already in
+# ReadWritePaths) so `pnpm install` works for vite/next builds. The store
+# is content-addressed and shared across deploys, so subsequent installs
+# hit cache and finish in seconds.
+Environment=PNPM_STORE_DIR=/var/www/demos/.forge/pnpm-store
+# pnpm also reads ~/.npmrc / ~/.pnpmrc for config, blocked by ProtectHome.
+# Point HOME at the same tmp area so any incidental reads land somewhere
+# writable — pnpm tolerates an empty config.
+Environment=HOME=/var/www/demos/.forge/pnpm-home
 ExecStart=/opt/baboons-demo-forge/.venv/bin/python -m server.main
 Restart=on-failure
 RestartSec=5s

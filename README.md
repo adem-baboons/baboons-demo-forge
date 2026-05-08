@@ -14,12 +14,21 @@ Exposes four MCP tools over Streamable HTTP:
 | `delete_demo`    | Permanently removes a demo. Requires `confirm=True`.                |
 | `get_build_logs` | Returns the last build log for a slug — useful for debugging.       |
 
-Two build modes, auto-detected from the payload:
+Three build modes, auto-detected from the payload:
 
-- **static** — no `package.json`. Files are served as-is.
+- **static** — no `package.json` and no `vite.config.*`. Files are served as-is.
 - **next** — `package.json` includes a `next` dependency. Runs
   `pnpm install && pnpm run build`. Expects `next.config.js` with
   `output: "export"` so a static `out/` directory is produced.
+- **vite** — `package.json` includes a `vite` dependency, OR a
+  `vite.config.{js,ts,mjs,cjs}` is present. Runs
+  `pnpm install && pnpm run build`. Expects a `dist/` directory.
+
+The build output is resolved by checking `dist/` → `out/` → `build/` in
+that order; the first directory that exists wins. `node_modules`,
+`.vite`, `.next`, source files etc. stay in the staging tmpdir and are
+never published — only the resolved output directory is moved into
+`/var/www/demos/<slug>/`.
 
 ## URL pattern
 
@@ -132,7 +141,22 @@ extension), and POSTs the whole payload directly to `forge.baboons.dev/mcp`.
 | Use case | Pick |
 |---|---|
 | Small static demo, hand-written HTML, ≲100 KB total | Claude-driven `deploy_demo` (any chat) |
+| Vite/Next.js **source** (server-side build), source ≲100 KB | Claude-driven `deploy_demo` (mobile, web, desktop — anywhere with the connector) |
 | Built static directory with binary assets, anything that exceeds the LLM's output budget | `scripts/upload-static-dir.py` |
+
+The Claude-driven path for Vite source: send `package.json`,
+`vite.config.ts`, `index.html`, the contents of `src/`, and any config
+files (`tailwind.config.js`, `tsconfig.json`, …) as files to
+`deploy_demo`. Forge runs `pnpm install && pnpm run build` server-side,
+publishes `dist/`. First build on a cold pnpm-store can take ~60 s; the
+store is persisted under `<demos_root>/.forge/pnpm-store` and shared
+across deploys, so subsequent builds finish in seconds.
+
+Caveat: Claude.ai's MCP connector enforces a tool-call timeout (around
+60–120 s in our testing). On the **first** Vite deploy after a clean
+install, pnpm install can run longer than that — the client times out
+but the server keeps working. If `deploy_demo` appears to fail, wait
+30 s and call `list_demos` to see whether it landed.
 
 ### Usage
 

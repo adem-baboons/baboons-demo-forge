@@ -30,6 +30,10 @@ fi
 echo "==> ensuring ${DEMOS_ROOT} exists"
 mkdir -p "${DEMOS_ROOT}"
 mkdir -p "${LOGS_DIR}"
+# pnpm needs a store dir under ReadWritePaths (ProtectHome=true blocks
+# the default $HOME/.pnpm-store). Co-locate with the rest of .forge state.
+mkdir -p "${DEMOS_ROOT}/.forge/pnpm-store"
+mkdir -p "${DEMOS_ROOT}/.forge/pnpm-home"
 
 # Caddy reads files as the caddy user; the deploy user writes them.
 # Make demos_root group-owned by the deploy user's group so caddy + deploy
