@@ -29,9 +29,33 @@ class TestRenderSnippet:
 
     def test_includes_static_serving_directives(self) -> None:
         out = render_snippet("acme", DEMOS)
-        assert "try_files {path} {path}/index.html" in out
+        # The full SPA-aware try_files chain. Order matters — {path} first
+        # so genuine assets win, /index.html last so SPA deep links land
+        # on the entry point and the client-side router takes over.
+        assert "try_files {path} {path}/index.html /index.html" in out
         assert "file_server" in out
         assert "encode zstd gzip" in out
+
+    def test_try_files_includes_spa_fallback(self) -> None:
+        """SPA frameworks (React Router, Vue Router, SvelteKit, Vite-+-React)
+        depend on every unknown path falling back to /index.html so their
+        client-side router can render the right view.
+
+        Without ``/index.html`` in try_files, deep links like
+        ``/about/team`` 404 and the demo only works at the root URL —
+        which we hit on the dekkers and lupker-makelaardij planning.
+        """
+        out = render_snippet("acme", DEMOS)
+        # Pull just the try_files line and check the final fallback.
+        try_files_line = next(
+            line for line in out.splitlines() if "try_files" in line
+        )
+        tokens = try_files_line.split()
+        # Format: ``try_files {path} {path}/index.html /index.html``
+        assert tokens[-1] == "/index.html", (
+            f"final try_files fallback must be /index.html (the SPA "
+            f"fallback) — got {tokens[-1]!r} from line {try_files_line!r}"
+        )
 
     def test_includes_cache_headers_matching_stax_pattern(self) -> None:
         out = render_snippet("acme", DEMOS)

@@ -27,10 +27,21 @@ log = logging.getLogger("forge.caddy")
 # Mirrors stax.baboons.dev's caching pattern: aggressive immutable cache
 # on /assets/* and /images/*, and a no-cache header on /index.html and /
 # so HTML changes propagate immediately.
+#
+# try_files chain:
+#   1. {path}              — serve the file at that exact path if it exists
+#   2. {path}/index.html   — directory + implicit index.html
+#   3. /index.html         — SPA fallback (React/Vue/Svelte client-side routers
+#                            need every unknown path to land on index.html so
+#                            their JS router can take over)
+#
+# Side effect on plain static demos: requests for files that don't exist no
+# longer 404; they now serve index.html with HTTP 200. For the kind of demos
+# the Forge ships (one-pagers + SPAs) this is the desired behaviour.
 SNIPPET_TEMPLATE = """\
 {slug}.baboons.dev {{
     root * {root}
-    try_files {{path}} {{path}}/index.html
+    try_files {{path}} {{path}}/index.html /index.html
     file_server
     encode zstd gzip
 

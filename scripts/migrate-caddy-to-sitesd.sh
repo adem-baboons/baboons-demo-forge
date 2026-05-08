@@ -45,7 +45,7 @@ write_snippet() {
   cat > "${file}" <<EOF
 ${slug}.baboons.dev {
     root * /var/www/demos/${slug}
-    try_files {path} {path}/index.html
+    try_files {path} {path}/index.html /index.html
     file_server
     encode zstd gzip
 

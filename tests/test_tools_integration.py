@@ -200,6 +200,8 @@ def test_deploy_writes_caddy_snippet_then_delete_removes_it(tmp_path: Path) -> N
     body = snippet.read_text()
     assert "acme.baboons.dev" in body
     assert "root * " in body and "/demos/acme" in body
+    # SPA fallback: the snippet must be SPA-aware so deep links work.
+    assert "try_files {path} {path}/index.html /index.html" in body
 
     res2 = asyncio.run(
         server.call_tool("delete_demo", {"slug": "acme", "confirm": True})
