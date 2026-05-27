@@ -195,6 +195,11 @@ with `400 Missing session ID` — the handshake is non-optional.
 Authenticates using the static `FORGE_AUTH_TOKEN` (the ops side door); does
 not go through OAuth. Uses Python stdlib only — no `pip install` needed.
 
+> **macOS note:** if you hit `SSL: CERTIFICATE_VERIFY_FAILED`, prefix the
+> command with `SSL_CERT_FILE=/etc/ssl/cert.pem`. The python.org
+> Python.framework installer doesn't link the system CA bundle by default,
+> and stdlib `urllib` has no fallback. Linux distros' system Python is fine.
+
 ## Client asset hosting
 
 Real client images (logos, headshots, product photos) lose bytes when
@@ -259,6 +264,10 @@ python3 scripts/upload-asset.py --client kluytmans --file ./logo.png --name bran
 python3 scripts/upload-asset.py --client kluytmans --dir ./logos/
 ```
 
+> **macOS note:** if you hit `SSL: CERTIFICATE_VERIFY_FAILED`, prefix the
+> command with `SSL_CERT_FILE=/etc/ssl/cert.pem` (same constraint as
+> `upload-static-dir.py` — see that section).
+
 Demos then reference the URLs directly:
 
 ```html
@@ -309,6 +318,14 @@ The `forge.baboons.dev` Caddy snippet is the source of truth at
 `deploy/caddy-snippet.conf`. After editing it, copy the updated
 `forge.baboons.dev { … }` block over `/etc/caddy/sites.d/forge.baboons.dev.conf`
 on the VPS, then `caddy validate && systemctl reload caddy`.
+
+> Note: `deploy/caddy-snippet.conf` is the **fresh-install reference** — it
+> targets a single top-level Caddyfile and includes a `tls { dns cloudflare … }`
+> block. Once migrated to the `sites.d` layout via `scripts/migrate-caddy-to-sitesd.sh`,
+> each site picks up its cert via Caddy's automatic HTTPS (HTTP-01 challenge),
+> so the live `forge.baboons.dev.conf` snippet omits the `tls` block. When
+> editing on a live host, port that change in — don't paste the `tls` block
+> back unless you also want to flip TLS issuance back to DNS-01.
 
 ## Deploy flow
 
