@@ -15,6 +15,7 @@ from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 
 from . import caddy as caddy_mod
+from .assets import register_asset_routes
 from .auth import StaticBearerVerifier
 from .config import Settings
 from .oauth import PersistentOAuthProvider
@@ -47,6 +48,7 @@ def build_server(settings: Settings) -> FastMCP:
     mcp = FastMCP("Baboons Demo Forge", auth=auth)
 
     register_tools(mcp, settings)
+    register_asset_routes(mcp, settings)
 
     # Caddy / uptime checks hit /health unauthenticated.
     @mcp.custom_route("/health", methods=["GET"])

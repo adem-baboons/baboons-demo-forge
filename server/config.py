@@ -95,6 +95,30 @@ MAX_TOTAL_BYTES = 50 * 1024 * 1024  # 50 MB
 
 
 # ---------------------------------------------------------------------------
+# Asset hosting (per-client, served from <demos_root>/.assets/<client>/)
+# ---------------------------------------------------------------------------
+
+# Lives alongside demo slug directories. The leading dot keeps it out of
+# _list_demo_slugs enumeration (which already filters dot-prefixed dirs).
+ASSETS_SUBDIR = ".assets"
+
+# 10 MB per asset upload. Real client logos sit comfortably under 1 MB; the
+# cap exists to keep a malicious or accidentally-huge upload from filling
+# the disk in one request.
+MAX_ASSET_BYTES = 10 * 1024 * 1024
+
+# Lowercase extensions (including the leading dot). Allowlist — anything
+# not in this set is rejected before the file touches disk.
+ALLOWED_ASSET_EXTS: frozenset[str] = frozenset(
+    {".png", ".jpg", ".jpeg", ".webp", ".svg", ".gif"}
+)
+
+# Cap the filename length so a pathologically long name can't bloat the
+# directory listing or trip filesystem limits.
+ASSET_FILENAME_MAX_LEN = 128
+
+
+# ---------------------------------------------------------------------------
 # Runtime settings (env-driven)
 # ---------------------------------------------------------------------------
 
