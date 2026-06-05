@@ -46,8 +46,8 @@ Caddyfile contains a single `import /etc/caddy/sites.d/*.conf` directive.
 
 - 2–30 characters, lowercase alphanumeric and hyphens.
 - No leading or trailing hyphen.
-- Cannot match the reserved blocklist (`sales`, `deploy`, `trades`, `stax`,
-  `api`, `diwan`, `diwantravel`, `forge`, `www`, `mail`, …).
+- Cannot match the reserved blocklist (`foo`, `deploy`, `bar`, `internal`,
+  `api`, `app`, `staging`, `forge`, `www`, `mail`, …).
 
 ## Limits
 
@@ -116,14 +116,12 @@ file documents this alongside the directive.
 
 ### Soft spots worth knowing
 
-- `/authorize` has no human-consent UI; whoever hits it with a registered
-  `client_id` mints an auth code immediately. The real gate is DCR (above)
-  + the `client_secret` issued at registration time. If an attacker
-  obtains a registered `client_id`+`client_secret` (e.g. via
-  `oauth-state.json` exfiltration), they can issue tokens. File mode 0600
-  keeps that to root + `baboons-deploy`.
-- `oauth-state.json` contains access tokens and refresh tokens in
-  cleartext. Threat model assumes the VPS file system is trusted.
+- `/authorize` has no human-consent UI; whoever holds a registered
+  `client_id` + `client_secret` can mint an auth code immediately. The
+  real gate is DCR (above) + the secret issued at registration time, so
+  the practical perimeter is whatever protects those credentials at rest.
+- Persisted OAuth state holds live credentials in plain form. The threat
+  model assumes the host file system is trusted.
 
 ## Heavy demos: when LLM-driven `deploy_demo` doesn't fit
 
@@ -174,8 +172,9 @@ keeps working even after the client gives up.
 ### Usage
 
 ```bash
+# Set VPS_HOST to your own server, e.g. user@your-vps.example.com.
 # Pull the ops bearer from the VPS env file (one-time)
-export FORGE_AUTH_TOKEN=$(ssh -i ~/.ssh/id_ed25519 root@134.209.207.63 \
+export FORGE_AUTH_TOKEN=$(ssh -i ~/.ssh/id_ed25519 "$VPS_HOST" \
   'sudo grep FORGE_AUTH_TOKEN /etc/baboons-demo-forge/forge.env | cut -d= -f2')
 
 # Build your demo locally
@@ -250,7 +249,7 @@ Allowed extensions: `.png`, `.jpg`, `.jpeg`, `.webp`, `.svg`, `.gif`.
 
 ```bash
 # Same one-time token export as for upload-static-dir.py
-export FORGE_AUTH_TOKEN=$(ssh -i ~/.ssh/id_ed25519 root@134.209.207.63 \
+export FORGE_AUTH_TOKEN=$(ssh -i ~/.ssh/id_ed25519 "$VPS_HOST" \
   'sudo grep FORGE_AUTH_TOKEN /etc/baboons-demo-forge/forge.env | cut -d= -f2')
 
 # Single file
