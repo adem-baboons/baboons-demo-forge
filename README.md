@@ -51,7 +51,7 @@ Caddyfile contains a single `import /etc/caddy/sites.d/*.conf` directive.
 
 ## Limits
 
-- Max 100 files per deploy.
+- Max 200 files per deploy.
 - Max 5 MB per file, 50 MB total.
 - File paths must be relative — no leading `/`, no `..`. Path traversal is
   rejected before anything is written.

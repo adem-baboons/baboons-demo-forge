@@ -230,7 +230,7 @@ def register_tools(mcp: FastMCP, settings: Settings) -> None:
             "  - next:   payload with package.json containing a 'next' dep — runs "
             "'pnpm install && pnpm run build'; expects next.config.js with "
             "output: 'export' so an out/ directory is produced.\n\n"
-            "Limits: max 100 files, 5 MB per file, 50 MB total. File paths must be "
+            "Limits: max 200 files, 5 MB per file, 50 MB total. File paths must be "
             "relative (no leading slash, no '..'). Returns the public URL on success."
         ),
     )

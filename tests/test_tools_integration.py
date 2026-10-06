@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 from fastmcp import FastMCP
 
-from server.config import Settings
+from server.config import MAX_FILES_PER_DEPLOY, Settings
 from server.tools import register_tools
 
 
@@ -118,7 +118,7 @@ def test_reserved_slug_rejected_with_named_reason(mcp: FastMCP) -> None:
 
 def test_too_many_files_rejected(mcp: FastMCP) -> None:
     payload = [
-        {"path": f"f{i}.html", "content": "x"} for i in range(0, 101)
+        {"path": f"f{i}.html", "content": "x"} for i in range(MAX_FILES_PER_DEPLOY + 1)
     ]
     res = _call(
         mcp, "deploy_demo", slug="bigdrop", files=payload
