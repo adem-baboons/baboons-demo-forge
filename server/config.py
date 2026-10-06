@@ -209,7 +209,7 @@ class Settings:
                 )
             ),
             caddy_reload_cmd=os.getenv("FORGE_CADDY_RELOAD_CMD", DEFAULT_CADDY_RELOAD_CMD),
-            dcr_enabled=os.getenv("FORGE_DCR_ENABLED", "1") == "1",
+            dcr_enabled=os.getenv("FORGE_DCR_ENABLED", "0") == "1",
             oauth_state_path=Path(
                 os.getenv(
                     "FORGE_OAUTH_STATE_PATH",

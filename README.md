@@ -83,7 +83,9 @@ arbitrary file upload + build execution on the VPS (the standard "free
 build server" abuse pattern).
 
 `FORGE_DCR_ENABLED=1` opens `/register`; `FORGE_DCR_ENABLED=0` returns a
-structured RFC 7591 error pointing the caller at the env file. Workflow:
+structured RFC 7591 error pointing the caller at the env file. Registration
+is only open when the value is exactly `1`; unset or any other value means
+off. Workflow:
 
 1. First-time setup: `FORGE_DCR_ENABLED=1`, restart service, add the MCP
    server in Claude (it auto-registers via DCR).
