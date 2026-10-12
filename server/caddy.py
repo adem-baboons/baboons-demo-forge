@@ -38,11 +38,15 @@ log = logging.getLogger("forge.caddy")
 # Side effect on plain static demos: requests for files that don't exist no
 # longer 404; they now serve index.html with HTTP 200. For the kind of demos
 # the Forge ships (one-pagers + SPAs) this is the desired behaviour.
+#
+# Per-slug extras: the static serving sits in a ``route`` block that first
+# imports ``<sites_dir>/extras/<slug>.caddy*``. Forge never writes that file,
+# so hand-managed routes (an API under /data/*, an IP allowlist) survive
+# redeploys. ``route`` keeps the written order, so the extras run before the
+# SPA fallback (try_files would otherwise rewrite /data/* to /index.html).
+# With no extras file Caddy only logs a warning and serving is unchanged.
 SNIPPET_TEMPLATE = """\
 {slug}.baboons.dev {{
-    root * {root}
-    try_files {{path}} {{path}}/index.html /index.html
-    file_server
     encode zstd gzip
 
     @assets path /assets/* /images/*
@@ -50,6 +54,13 @@ SNIPPET_TEMPLATE = """\
 
     @html path /index.html /
     header @html Cache-Control "no-cache, must-revalidate"
+
+    route {{
+        import {extras_dir}/{slug}.caddy*
+        root * {root}
+        try_files {{path}} {{path}}/index.html /index.html
+        file_server
+    }}
 }}
 """
 
@@ -62,9 +73,12 @@ class CaddyError(RuntimeError):
         self.output = output
 
 
-def render_snippet(slug: str, demos_root: Path) -> str:
+DEFAULT_EXTRAS_DIR = Path("/etc/caddy/sites.d/extras")
+
+
+def render_snippet(slug: str, demos_root: Path, extras_dir: Path = DEFAULT_EXTRAS_DIR) -> str:
     """Render the Caddy site block for ``slug``. Pure function."""
-    return SNIPPET_TEMPLATE.format(slug=slug, root=str(demos_root / slug))
+    return SNIPPET_TEMPLATE.format(slug=slug, root=str(demos_root / slug), extras_dir=str(extras_dir))
 
 
 def snippet_path(slug: str, sites_dir: Path) -> Path:
@@ -192,7 +206,7 @@ def install_snippet(
     target = snippet_path(slug, sites_dir)
     previous = target.read_text(encoding="utf-8") if target.exists() else None
 
-    _atomic_write(target, render_snippet(slug, demos_root))
+    _atomic_write(target, render_snippet(slug, demos_root, sites_dir / "extras"))
     try:
         reload_caddy(reload_cmd)
     except CaddyError:

@@ -66,6 +66,17 @@ class TestRenderSnippet:
         assert "@html path /index.html /" in out
         assert 'Cache-Control "no-cache, must-revalidate"' in out
 
+    def test_imports_per_slug_extras_before_spa_fallback(self) -> None:
+        """Hand-managed routes in ``extras/<slug>.caddy`` must run before
+        try_files, or the SPA fallback rewrites e.g. /data/* to /index.html."""
+        out = render_snippet("acme", DEMOS, Path("/etc/caddy/sites.d/extras"))
+        assert "import /etc/caddy/sites.d/extras/acme.caddy*" in out
+        lines = [line.strip() for line in out.splitlines()]
+        assert lines.index("route {") < lines.index("import /etc/caddy/sites.d/extras/acme.caddy*")
+        assert lines.index("import /etc/caddy/sites.d/extras/acme.caddy*") < next(
+            i for i, line in enumerate(lines) if line.startswith("try_files")
+        )
+
     def test_render_uses_custom_demos_root(self) -> None:
         out = render_snippet("foo", Path("/tmp/demos"))
         assert "root * /tmp/demos/foo" in out
