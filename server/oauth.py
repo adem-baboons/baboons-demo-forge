@@ -171,14 +171,11 @@ class PersistentOAuthProvider(InMemoryOAuthProvider):
                 "(known clients: %d)",
                 len(self.clients),
             )
+            # Generic on purpose: this endpoint is unauthenticated, so the reply must not
+            # name config files or variables. The log line above tells the operator what to do.
             raise RegistrationError(
                 error="invalid_client_metadata",
-                error_description=(
-                    "Dynamic client registration is currently disabled. "
-                    "An administrator must set FORGE_DCR_ENABLED=1 in "
-                    "/etc/baboons-demo-forge/forge.env and restart the "
-                    "service to allow new registrations."
-                ),
+                error_description="dynamic client registration is disabled",
             )
         await super().register_client(client_info)
         log.info(

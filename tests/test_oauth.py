@@ -98,7 +98,8 @@ class TestDCRGating:
         assert exc.value.error == "invalid_client_metadata"
         msg = (exc.value.error_description or "").lower()
         assert "disabled" in msg
-        assert "forge_dcr_enabled=1" in msg.replace(" ", "_") or "forge_dcr_enabled" in msg.replace(" ", "")
+        # Unauthenticated endpoint: no config var names or server paths in the reply.
+        assert "forge_" not in msg and "/etc/" not in msg and ".env" not in msg
         # Ensure no trace of the rejected registration on disk.
         assert "blocked" not in provider.clients
 
