@@ -89,7 +89,7 @@ def validate_slug(slug: str) -> str:
 # File-payload limits (per deploy_demo call)
 # ---------------------------------------------------------------------------
 
-MAX_FILES_PER_DEPLOY = 200
+MAX_FILES_PER_DEPLOY = 800
 MAX_BYTES_PER_FILE = 5 * 1024 * 1024  # 5 MB
 MAX_TOTAL_BYTES = 50 * 1024 * 1024  # 50 MB
 
