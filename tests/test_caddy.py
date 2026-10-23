@@ -77,6 +77,12 @@ class TestRenderSnippet:
             i for i, line in enumerate(lines) if line.startswith("try_files")
         )
 
+    def test_imports_shared_noindex_snippet(self) -> None:
+        """Demos must never be indexed: the shared snippet sets X-Robots-Tag."""
+        out = render_snippet("acme", DEMOS)
+        lines = [line.strip() for line in out.splitlines()]
+        assert lines[1] == "import /etc/caddy/snippets/noindex.caddy"
+
     def test_render_uses_custom_demos_root(self) -> None:
         out = render_snippet("foo", Path("/tmp/demos"))
         assert "root * /tmp/demos/foo" in out

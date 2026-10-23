@@ -45,8 +45,12 @@ log = logging.getLogger("forge.caddy")
 # redeploys. ``route`` keeps the written order, so the extras run before the
 # SPA fallback (try_files would otherwise rewrite /data/* to /index.html).
 # With no extras file Caddy only logs a warning and serving is unchanged.
+#
+# Noindex: every block imports /etc/caddy/snippets/noindex.caddy (hand-managed, shared by all
+# baboons.dev hosts), which sets X-Robots-Tag "noindex, nofollow, noarchive" on every response.
 SNIPPET_TEMPLATE = """\
 {slug}.baboons.dev {{
+    import /etc/caddy/snippets/noindex.caddy
     encode zstd gzip
 
     @assets path /assets/* /images/*
