@@ -91,7 +91,7 @@ def validate_slug(slug: str) -> str:
 
 MAX_FILES_PER_DEPLOY = 800
 MAX_BYTES_PER_FILE = 5 * 1024 * 1024  # 5 MB
-MAX_TOTAL_BYTES = 50 * 1024 * 1024  # 50 MB
+MAX_TOTAL_BYTES = 75 * 1024 * 1024  # 75 MB (raised from 50 on 2026-11-10, user-approved)
 
 
 # ---------------------------------------------------------------------------
